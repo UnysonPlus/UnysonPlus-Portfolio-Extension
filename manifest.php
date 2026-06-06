@@ -11,7 +11,7 @@ $manifest['description'] = __(
 	'fw' 
 );
 
-$manifest['version']     = '1.0.10';
+$manifest['version']     = '1.0.11';
 $manifest['display']     = true;
 $manifest['standalone']  = true;
 
@@ -29,3 +29,11 @@ $manifest['license']      = 'GPL-2.0-or-later';
 $manifest['text_domain']  = 'fw';
 $manifest['requires_php'] = '7.4';
 $manifest['requires_wp']  = '5.8';
+
+/**
+ * Changelog
+ * -----------------------------------------------------------------------------
+ * 1.0.11 - Security: escaped $post_title with esc_html() in
+ *          views/content.php (nivoslider caption). Prevents stored XSS via
+ *          attachment post titles.
+ */

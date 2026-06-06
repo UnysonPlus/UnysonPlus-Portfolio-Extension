@@ -31,7 +31,7 @@ if ( ! empty( $thumbnails ) ) :
 		<div class="nivo-html-caption">
 			<?php foreach ( $captions as $attachment_id => $post_title ) : ?>
 				<div
-					id="nivoslider-caption-<?php echo esc_attr($attachment_id) ?>"><?php echo $post_title ?></div>
+					id="nivoslider-caption-<?php echo esc_attr($attachment_id) ?>"><?php echo esc_html( $post_title ) ?></div>
 			<?php endforeach ?>
 		</div>
 	</section>
