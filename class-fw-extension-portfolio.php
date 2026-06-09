@@ -160,7 +160,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 		if ( fw_current_screen_match( $projects_listing_screen ) ) {
 			wp_enqueue_style(
 				'fw-extension-' . $this->get_name() . '-listing',
-				$this->get_declared_URI( '/static/css/admin-listing.css' ),
+				fw_min_uri($this->get_declared_URI( '/static/css/admin-listing.css' )),
 				array(),
 				fw()->manifest->get_version()
 			);
@@ -169,13 +169,13 @@ class FW_Extension_Portfolio extends FW_Extension {
 		if ( fw_current_screen_match( $projects_add_edit_screen ) ) {
 			wp_enqueue_style(
 				'fw-extension-' . $this->get_name() . '-add-edit',
-				$this->get_declared_URI( '/static/css/admin-add-edit.css' ),
+				fw_min_uri($this->get_declared_URI( '/static/css/admin-add-edit.css' )),
 				array(),
 				fw()->manifest->get_version()
 			);
 			wp_enqueue_script(
 				'fw-extension-' . $this->get_name() . '-add-edit',
-				$this->get_declared_URI( '/static/js/admin-add-edit.js' ),
+				fw_min_uri($this->get_declared_URI( '/static/js/admin-add-edit.js' )),
 				array( 'jquery' ),
 				fw()->manifest->get_version(),
 				true
