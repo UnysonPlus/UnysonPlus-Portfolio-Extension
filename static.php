@@ -3,51 +3,28 @@
 }
 
 if ( ! is_admin() ) {
-	global $template;
 	/**
 	 * @var FW_Extension_Portfolio $portfolio
 	 */
 	$portfolio = fw()->extensions->get( 'portfolio' );
 
 	if ( is_singular( $portfolio->get_post_type_name() ) ) {
-		wp_enqueue_style(
-			'fw-extension-' . $portfolio->get_name() . '-nivo-default',
-			$portfolio->locate_css_URI( 'NivoSlider/themes/default/default' ),
-			array(),
-			$portfolio->manifest->get_version()
-		);
+		$version = $portfolio->manifest->get_version();
 
+		// Modern, dependency-free gallery + lightbox (replaces NivoSlider).
 		wp_enqueue_style(
-			'fw-extension-' . $portfolio->get_name() . '-nivo-dark',
-			$portfolio->locate_css_URI( 'NivoSlider/themes/dark/dark' ),
+			'fw-ext-portfolio-gallery',
+			fw_min_uri( $portfolio->get_declared_URI( '/static/css/portfolio-gallery.css' ) ),
 			array(),
-			$portfolio->manifest->get_version()
-		);
-
-		wp_enqueue_style(
-			'fw-extension-' . $portfolio->get_name() . '-nivo-slider',
-			$portfolio->locate_css_URI( 'nivo-slider' ),
-			array(),
-			$portfolio->manifest->get_version()
+			$version
 		);
 
 		wp_enqueue_script(
-			'fw-extension-' . $portfolio->get_name() . '-nivoslider',
-			$portfolio->locate_js_URI( 'jquery.nivo.slider' ),
-			array( 'jquery' ),
-			$portfolio->manifest->get_version(),
-			true
-		);
-
-		wp_enqueue_script(
-			'fw-extension-' . $portfolio->get_name() . '-script',
-			$portfolio->locate_js_URI( 'projects-script' ),
-			array( 'fw-extension-' . $portfolio->get_name() . '-nivoslider' ),
-			$portfolio->manifest->get_version(),
+			'fw-ext-portfolio-lightbox',
+			fw_min_uri( $portfolio->get_declared_URI( '/static/js/portfolio-lightbox.js' ) ),
+			array(),
+			$version,
 			true
 		);
 	}
 }
-
-
-

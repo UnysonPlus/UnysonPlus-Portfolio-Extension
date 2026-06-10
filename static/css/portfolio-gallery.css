@@ -1,0 +1,269 @@
+/**
+ * Portfolio gallery grid + lightbox.
+ *
+ * Dependency-free replacement for the old NivoSlider. Shared by the
+ * single-project view (views/content.php) and the [project_gallery]
+ * shortcode. Columns / gap / aspect-ratio are driven by CSS custom
+ * properties set inline on the .fw-pg container, so PHP never has to emit
+ * per-instance <style> blocks.
+ */
+
+/* ------------------------------------------------------------------ grid */
+.fw-pg {
+	display: grid;
+	grid-template-columns: repeat(var(--fw-pg-cols, 3), minmax(0, 1fr));
+	gap: var(--fw-pg-gap, 16px);
+	margin: 0 0 1.5rem;
+	padding: 0;
+	list-style: none;
+}
+
+@media (max-width: 991px) {
+	.fw-pg {
+		grid-template-columns: repeat(var(--fw-pg-cols-tablet, 2), minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 575px) {
+	.fw-pg {
+		grid-template-columns: repeat(var(--fw-pg-cols-mobile, 1), minmax(0, 1fr));
+	}
+}
+
+/* ------------------------------------------------------------------ item */
+.fw-pg__item {
+	position: relative;
+	display: block;
+	overflow: hidden;
+	border-radius: var(--fw-pg-radius, 6px);
+	background: #f2f2f2;
+	cursor: zoom-in;
+	-webkit-tap-highlight-color: transparent;
+}
+
+/* Aspect-ratio crop. When --fw-pg-ratio is "auto" the property is simply
+   unset by PHP and images keep their natural height (masonry-ish flow). */
+.fw-pg--ratio .fw-pg__item {
+	aspect-ratio: var(--fw-pg-ratio, 4 / 3);
+}
+
+.fw-pg__item img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform .5s cubic-bezier(.2, .8, .2, 1);
+}
+
+.fw-pg__item:hover img,
+.fw-pg__item:focus-visible img {
+	transform: scale(1.06);
+}
+
+/* hover veil + zoom glyph */
+.fw-pg__item::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: rgba(17, 17, 17, .35);
+	opacity: 0;
+	transition: opacity .3s ease;
+	z-index: 1;
+}
+
+.fw-pg__zoom {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	transform: scale(.7);
+	transition: opacity .3s ease, transform .3s ease;
+	pointer-events: none;
+}
+
+.fw-pg__zoom svg {
+	width: 26px;
+	height: 26px;
+	fill: none;
+	stroke: #fff;
+	stroke-width: 2;
+}
+
+.fw-pg__item:hover::before,
+.fw-pg__item:focus-visible::before { opacity: 1; }
+
+.fw-pg__item:hover .fw-pg__zoom,
+.fw-pg__item:focus-visible .fw-pg__zoom {
+	opacity: 1;
+	transform: scale(1);
+}
+
+.fw-pg__item:focus-visible {
+	outline: 2px solid #4a90d9;
+	outline-offset: 2px;
+}
+
+/* no-lightbox variant: drop the zoom affordances */
+.fw-pg__item--static { cursor: default; }
+.fw-pg__item--static::before,
+.fw-pg__item--static .fw-pg__zoom { display: none; }
+.fw-pg__item--static:hover img { transform: none; }
+
+/* caption strip under each thumb (optional) */
+.fw-pg__caption {
+	display: block;
+	margin-top: .4rem;
+	font-size: .85em;
+	line-height: 1.35;
+	opacity: .8;
+}
+
+/* ------------------------------------------------------------- lightbox */
+.fw-pg-lb {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(8, 8, 10, .92);
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity .25s ease, visibility .25s ease;
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+.fw-pg-lb.is-open {
+	opacity: 1;
+	visibility: visible;
+}
+
+.fw-pg-lb__stage {
+	position: relative;
+	max-width: 92vw;
+	max-height: 86vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.fw-pg-lb__img {
+	max-width: 92vw;
+	max-height: 86vh;
+	width: auto;
+	height: auto;
+	display: block;
+	border-radius: 4px;
+	box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+	opacity: 0;
+	transition: opacity .25s ease;
+}
+
+.fw-pg-lb.is-loaded .fw-pg-lb__img { opacity: 1; }
+
+.fw-pg-lb__spinner {
+	position: absolute;
+	width: 42px;
+	height: 42px;
+	border: 3px solid rgba(255, 255, 255, .25);
+	border-top-color: #fff;
+	border-radius: 50%;
+	animation: fw-pg-spin .8s linear infinite;
+	opacity: 0;
+	transition: opacity .2s ease;
+}
+
+.fw-pg-lb:not(.is-loaded) .fw-pg-lb__spinner { opacity: 1; }
+
+@keyframes fw-pg-spin { to { transform: rotate(360deg); } }
+
+/* controls */
+.fw-pg-lb__btn {
+	position: absolute;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	padding: 0;
+	margin: 0;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, .08);
+	color: #fff;
+	cursor: pointer;
+	transition: background .2s ease, transform .2s ease;
+}
+
+.fw-pg-lb__btn:hover { background: rgba(255, 255, 255, .2); }
+.fw-pg-lb__btn:active { transform: scale(.92); }
+
+.fw-pg-lb__btn:focus-visible {
+	outline: 2px solid #fff;
+	outline-offset: 2px;
+}
+
+.fw-pg-lb__btn svg {
+	width: 22px;
+	height: 22px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.fw-pg-lb__close { top: 18px; right: 18px; }
+.fw-pg-lb__prev { left: 18px;  top: 50%; transform: translateY(-50%); }
+.fw-pg-lb__next { right: 18px; top: 50%; transform: translateY(-50%); }
+.fw-pg-lb__prev:active, .fw-pg-lb__next:active { transform: translateY(-50%) scale(.92); }
+
+/* caption + counter */
+.fw-pg-lb__bar {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 14px 64px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	color: rgba(255, 255, 255, .92);
+	font-size: 14px;
+	text-align: center;
+	background: linear-gradient(to top, rgba(0, 0, 0, .55), transparent);
+	pointer-events: none;
+}
+
+.fw-pg-lb__caption { max-width: 70ch; }
+.fw-pg-lb__count {
+	font-variant-numeric: tabular-nums;
+	opacity: .7;
+	white-space: nowrap;
+}
+
+.fw-pg-lb__bar:empty { display: none; }
+
+/* single-image: hide nav arrows */
+.fw-pg-lb.is-single .fw-pg-lb__prev,
+.fw-pg-lb.is-single .fw-pg-lb__next,
+.fw-pg-lb.is-single .fw-pg-lb__count { display: none; }
+
+body.fw-pg-lb-open { overflow: hidden; }
+
+/* respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+	.fw-pg__item img,
+	.fw-pg__zoom,
+	.fw-pg__item::before,
+	.fw-pg-lb,
+	.fw-pg-lb__img,
+	.fw-pg-lb__btn { transition: none; }
+	.fw-pg-lb__spinner { animation-duration: 1.6s; }
+}
