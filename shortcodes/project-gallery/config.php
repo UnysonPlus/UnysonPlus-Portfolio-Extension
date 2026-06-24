@@ -7,7 +7,7 @@ $cfg = array();
 $cfg['page_builder'] = array(
 	'title'       => __( 'Project Gallery', 'fw' ),
 	'description' => __( 'Show a portfolio project\'s image gallery as a responsive grid with a built-in lightbox.', 'fw' ),
-	'tab'         => __( 'Content Elements', 'fw' ),
+	'tab'         => __( 'Media Elements', 'fw' ),
 	'popup_size'  => 'medium',
 
 	'title_template' => '

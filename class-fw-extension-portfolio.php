@@ -20,11 +20,84 @@ class FW_Extension_Portfolio extends FW_Extension {
 		add_action( 'init', array( $this, '_action_register_post_type' ) );
 		add_action( 'init', array( $this, '_action_register_taxonomy' ) );
 
+		// Settings-driven archive query tuning (front end only).
+		add_action( 'pre_get_posts', array( $this, '_action_tune_archive_query' ) );
+
+		// Mirror the per-project "Featured" option into a real, queryable meta
+		// key (Unyson keeps all post options in one serialized blob, which can't
+		// be ordered on) so archives can float featured projects to the front.
+		// Priority 99 on the generic save_post runs AFTER Unyson persists the
+		// post options (its handler is on save_post @ 7); the per-post-type hook
+		// would fire too early (before save_post).
+		add_action( 'save_post', array( $this, '_action_sync_featured_meta' ), 99, 2 );
+
 		if ( is_admin() ) {
 			$this->save_permalink_structure();
 			$this->add_admin_actions();
 			$this->add_admin_filters();
 		}
+	}
+
+	/**
+	 * Read a saved extension-settings value, falling back to the option default
+	 * declared in settings-options.php.
+	 *
+	 * @param string $key
+	 * @param mixed  $default Returned when the option type yields null.
+	 *
+	 * @return mixed
+	 */
+	public function get_setting( $key, $default = null ) {
+		// Forward the default so an unsaved option short-circuits inside the
+		// options model BEFORE it loads/processes settings-options.php (which
+		// would trigger Unyson's option-types init). Important: never call this
+		// during _init()/extension boot — only from `init` or later hooks.
+		$value = fw_get_db_ext_settings_option( $this->get_name(), $key, $default );
+
+		return ( null === $value ) ? $default : $value;
+	}
+
+	/**
+	 * Boolean convenience around get_setting() for the feature/switch toggles.
+	 *
+	 * @param string $key
+	 * @param bool   $default
+	 *
+	 * @return bool
+	 */
+	public function feature_enabled( $key, $default = true ) {
+		$value = $this->get_setting( $key, $default );
+
+		// `switch` options persist as 'yes'/'no' or 1/0/true depending on context.
+		if ( is_string( $value ) ) {
+			return in_array( strtolower( $value ), array( 'yes', '1', 'true', 'on' ), true );
+		}
+
+		return (bool) $value;
+	}
+
+	/**
+	 * Whether the per-project gallery box + single-view gallery is active.
+	 * Settings win; the legacy `has-gallery` config is the ultimate fallback.
+	 *
+	 * @return bool
+	 */
+	public function gallery_enabled() {
+		if ( $this->get_config( 'has-gallery' ) !== true ) {
+			return false;
+		}
+
+		return $this->feature_enabled( 'enable_gallery', true );
+	}
+
+	/**
+	 * Whether the project Tag taxonomy should be registered. Settings drive the
+	 * default; the legacy filter still wins so existing code keeps working.
+	 *
+	 * @return bool
+	 */
+	public function tags_enabled() {
+		return (bool) apply_filters( 'fw:ext:portfolio:enable-tags', $this->feature_enabled( 'enable_tags', false ) );
 	}
 
 	private function define_slugs() {
@@ -105,7 +178,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 	 */
 	public function _project_slug_input() {
 		?>
-		<input type="text" name="fw_ext_portfolio_project_slug" value="<?php echo $this->slug; ?>">
+		<input type="text" name="fw_ext_portfolio_project_slug" value="<?php echo esc_attr( $this->slug ); ?>">
 		<code>/my-project</code>
 		<?php
 	}
@@ -115,7 +188,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 	 */
 	public function _portfolio_slug_input() {
 		?>
-		<input type="text" name="fw_ext_portfolio_portfolio_slug" value="<?php echo $this->taxonomy_slug; ?>">
+		<input type="text" name="fw_ext_portfolio_portfolio_slug" value="<?php echo esc_attr( $this->taxonomy_slug ); ?>">
 		<code>/my-portfolio</code>
 		<?php
 	}
@@ -131,9 +204,13 @@ class FW_Extension_Portfolio extends FW_Extension {
 			10,
 			1 );
 
-		if ( $this->get_config( 'has-gallery' ) === true ) {
-			add_filter( 'fw_post_options', array( $this, '_filter_admin_add_post_options' ), 10, 2 );
-		}
+		// Always attach; the callback decides per-feature. Reading the extension
+		// settings here (during _init/boot) would force Unyson's option-types
+		// init too early — before the page-builder extension registers its
+		// `page-builder` option type — breaking the page builder. The callback
+		// runs late (when post options are collected), where reading settings is
+		// safe.
+		add_filter( 'fw_post_options', array( $this, '_filter_admin_add_post_options' ), 10, 2 );
 	}
 
 	/**
@@ -237,8 +314,12 @@ class FW_Extension_Portfolio extends FW_Extension {
 				'menu_icon'          => 'dashicons-portfolio',
 				'hierarchical'       => false,
 				'query_var'          => true,
-				'show_in_rest' => true,
+				'show_in_rest'       => true,
 				/* Sets the query_var key for this post type. Default: true - set to $post_type */
+				'taxonomies'         => array_values( array_filter( array(
+					$this->taxonomy_name,
+					$this->tags_enabled() ? $this->taxonomy_tag_name : null,
+				) ) ),
 				'supports'           => $supports,
 				'capabilities'       => array(
 					'edit_post'              => 'edit_pages',
@@ -288,6 +369,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 			'hierarchical'      => true,
 			'show_ui'           => true,
 			'show_admin_column' => true,
+			'show_in_rest'      => true,
 			'query_var'         => true,
 			'show_in_nav_menus' => true,
 			'show_tagcloud'     => false,
@@ -296,7 +378,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 			),
 		) );
 
-		if ( apply_filters('fw:ext:portfolio:enable-tags', false) ) {
+		if ( $this->tags_enabled() ) {
 			$tag_names = apply_filters( 'fw_ext_portfolio_tag_name', array(
 				'singular' => __( 'Tag', 'fw' ),
 				'plural'   => __( 'Tags', 'fw' )
@@ -322,6 +404,8 @@ class FW_Extension_Portfolio extends FW_Extension {
 				),
 				'public' => true,
 				'show_ui' => true,
+				'show_admin_column' => true,
+				'show_in_rest' => true,
 				'query_var' => true,
 				'rewrite' => array(
 					'slug' => $this->taxonomy_tag_slug
@@ -339,7 +423,62 @@ class FW_Extension_Portfolio extends FW_Extension {
 	 * @return array
 	 */
 	public function _filter_admin_add_post_options( $options, $post_type ) {
-		if ( $post_type === $this->post_type ) {
+		if ( $post_type !== $this->post_type ) {
+			return $options;
+		}
+
+		if ( $this->feature_enabled( 'enable_project_details', true ) ) {
+			$options[] = array(
+				'project-details' => array(
+					'context' => 'normal',
+					'title'   => __( 'Project Details', 'fw' ),
+					'type'    => 'box',
+					'options' => array(
+						'group_project_details' => array(
+							'type'    => 'group',
+							'options' => array(
+								'project_featured' => array(
+									'label' => __( 'Featured project', 'fw' ),
+									'desc'  => __( 'Highlight this project and float it to the front of archives / featured queries.', 'fw' ),
+									'type'  => 'switch',
+									'value' => false,
+								),
+								'project_client'   => array(
+									'label' => __( 'Client', 'fw' ),
+									'type'  => 'text',
+									'value' => '',
+								),
+								'project_url'      => array(
+									'label' => __( 'Project URL', 'fw' ),
+									'desc'  => __( 'Live link to the project / launched site.', 'fw' ),
+									'type'  => 'text',
+									'value' => '',
+								),
+								'project_date'     => array(
+									'label' => __( 'Completion date', 'fw' ),
+									'type'  => 'date-picker',
+									'value' => '',
+								),
+								'project_services' => array(
+									'label' => __( 'Services / Role', 'fw' ),
+									'desc'  => __( 'Comma-separated list, e.g. "Design, Development, SEO".', 'fw' ),
+									'type'  => 'text',
+									'value' => '',
+								),
+								'project_summary'  => array(
+									'label' => __( 'Short summary', 'fw' ),
+									'desc'  => __( 'A one or two line description used in listings and the details panel.', 'fw' ),
+									'type'  => 'textarea',
+									'value' => '',
+								),
+							),
+						),
+					),
+				),
+			);
+		}
+
+		if ( $this->gallery_enabled() ) {
 			$options[] = array(
 				'general' => array(
 					'context' => 'side',
@@ -361,6 +500,82 @@ class FW_Extension_Portfolio extends FW_Extension {
 		}
 
 		return $options;
+	}
+
+	/**
+	 * Tune the front-end portfolio archive / category query from the saved
+	 * settings (per-page, order, featured-first). Leaves admin + secondary
+	 * queries untouched.
+	 *
+	 * @internal
+	 *
+	 * @param WP_Query $query
+	 */
+	public function _action_tune_archive_query( $query ) {
+		if ( is_admin() || ! $query->is_main_query() ) {
+			return;
+		}
+
+		$is_portfolio_archive = $query->is_post_type_archive( $this->post_type )
+		                        || $query->is_tax( $this->taxonomy_name )
+		                        || ( $this->tags_enabled() && $query->is_tax( $this->taxonomy_tag_name ) );
+
+		if ( ! $is_portfolio_archive ) {
+			return;
+		}
+
+		$per_page = (int) $this->get_setting( 'archive_per_page', 12 );
+		if ( $per_page > 0 ) {
+			$query->set( 'posts_per_page', $per_page );
+		}
+
+		$orderby = (string) $this->get_setting( 'orderby', 'date' );
+		$order   = (string) $this->get_setting( 'order', 'DESC' );
+
+		if ( $this->feature_enabled( 'featured_first', true ) && $orderby !== 'rand' ) {
+			// Float featured projects first, then apply the chosen order. The
+			// mirrored '_fw_portfolio_featured' meta only exists on featured
+			// projects, so EXISTS/NOT-EXISTS lets every project sort cleanly.
+			$query->set( 'meta_query', array(
+				'relation'      => 'OR',
+				'fw_featured'   => array( 'key' => '_fw_portfolio_featured', 'compare' => 'EXISTS' ),
+				'fw_unfeatured' => array( 'key' => '_fw_portfolio_featured', 'compare' => 'NOT EXISTS' ),
+			) );
+			$query->set( 'orderby', array(
+				'fw_featured' => 'DESC',
+				$orderby      => $order,
+			) );
+		} else {
+			$query->set( 'orderby', $orderby );
+			$query->set( 'order', $order );
+		}
+	}
+
+	/**
+	 * Mirror the serialized "Featured" project option into a dedicated,
+	 * queryable post meta key so archive ordering can use it.
+	 *
+	 * @internal
+	 *
+	 * @param int $post_id
+	 */
+	public function _action_sync_featured_meta( $post_id, $post = null ) {
+		if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) {
+			return;
+		}
+
+		$post_type = $post ? $post->post_type : get_post_type( $post_id );
+		if ( $post_type !== $this->post_type ) {
+			return;
+		}
+
+		$featured = fw_get_db_post_option( $post_id, 'project_featured', false );
+
+		if ( $featured ) {
+			update_post_meta( $post_id, '_fw_portfolio_featured', 1 );
+		} else {
+			delete_post_meta( $post_id, '_fw_portfolio_featured' );
+		}
 	}
 
 	/**
@@ -578,13 +793,19 @@ class FW_Extension_Portfolio extends FW_Extension {
 	public function get_settings() {
 
 		$response = array(
-			'post_type'     => $this->post_type,
-			'slug'          => $this->slug,
-			'taxonomy_slug' => $this->taxonomy_slug,
-			'taxonomy_name' => $this->taxonomy_name
+			'post_type'         => $this->post_type,
+			'slug'              => $this->slug,
+			'taxonomy_slug'     => $this->taxonomy_slug,
+			'taxonomy_name'     => $this->taxonomy_name,
+			'taxonomy_tag_name' => $this->taxonomy_tag_name,
+			'tags_enabled'      => $this->tags_enabled(),
 		);
 
 		return $response;
+	}
+
+	public function get_taxonomy_tag_name() {
+		return $this->taxonomy_tag_name;
 	}
 
 	public function get_image_sizes() {

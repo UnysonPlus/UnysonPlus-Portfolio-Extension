@@ -26,5 +26,13 @@ if ( ! is_admin() ) {
 			$version,
 			true
 		);
+
+		// Project-detail list + related-project cards styling.
+		wp_enqueue_style(
+			'fw-ext-portfolio-components',
+			fw_min_uri( $portfolio->get_declared_URI( '/static/css/portfolio-components.css' ) ),
+			array(),
+			$version
+		);
 	}
 }
