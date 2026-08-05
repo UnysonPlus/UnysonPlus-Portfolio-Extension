@@ -53,6 +53,26 @@ $options = array(
 					'rand'       => __( 'Random', 'fw' ),
 				),
 			),
+			'pagination' => array(
+				'label'   => __( 'Pagination', 'fw' ),
+				'desc'    => __( 'With "Load more", the number above becomes the page size (per batch) and a button fetches the next batch.', 'fw' ),
+				'type'    => 'select',
+				'value'   => 'none',
+				'choices' => array(
+					'none'     => __( 'None (show the set number)', 'fw' ),
+					'loadmore' => __( 'Load more button', 'fw' ),
+				),
+			),
+			'link_to' => array(
+				'label'   => __( 'Cards link to', 'fw' ),
+				'type'    => 'select',
+				'value'   => 'project',
+				'choices' => array(
+					'project'  => __( 'The project page', 'fw' ),
+					'lightbox' => __( 'The cover image in a lightbox', 'fw' ),
+					'none'     => __( 'Nothing', 'fw' ),
+				),
+			),
 			'order' => array(
 				'label'   => __( 'Order direction', 'fw' ),
 				'type'    => 'select',
@@ -73,11 +93,47 @@ $options = array(
 		'type'    => 'tab',
 		'options' => array(
 
+			'layout' => array(
+				'label'   => __( 'Layout', 'fw' ),
+				'desc'    => __( 'Masonry keeps each image\'s natural height; List renders full-width rows.', 'fw' ),
+				'type'    => 'select',
+				'value'   => 'grid',
+				'choices' => array(
+					'grid'    => __( 'Grid', 'fw' ),
+					'masonry' => __( 'Masonry', 'fw' ),
+					'list'    => __( 'List', 'fw' ),
+				),
+			),
 			'columns' => array(
 				'label'   => __( 'Columns (Desktop)', 'fw' ),
 				'type'    => 'select',
 				'value'   => '3',
 				'choices' => array( '1' => '1', '2' => '2', '3' => '3', '4' => '4', '5' => '5', '6' => '6' ),
+			),
+			'ratio' => array(
+				'label'   => __( 'Image ratio', 'fw' ),
+				'desc'    => __( 'Ignored by Masonry (it always keeps the original proportions).', 'fw' ),
+				'type'    => 'select',
+				'value'   => '4-3',
+				'choices' => array(
+					'1-1'  => __( 'Square (1:1)', 'fw' ),
+					'4-3'  => __( 'Landscape (4:3)', 'fw' ),
+					'3-2'  => __( 'Landscape (3:2)', 'fw' ),
+					'16-9' => __( 'Wide (16:9)', 'fw' ),
+					'3-4'  => __( 'Portrait (3:4)', 'fw' ),
+					'auto' => __( 'Original', 'fw' ),
+				),
+			),
+			'hover' => array(
+				'label'   => __( 'Hover style', 'fw' ),
+				'type'    => 'select',
+				'value'   => 'zoom',
+				'choices' => array(
+					'zoom'      => __( 'Image zoom', 'fw' ),
+					'overlay'   => __( 'Overlay caption', 'fw' ),
+					'grayscale' => __( 'Grayscale to color', 'fw' ),
+					'none'      => __( 'None', 'fw' ),
+				),
 			),
 			'gap' => array(
 				'label' => __( 'Gap (px)', 'fw' ),
@@ -105,6 +161,12 @@ $options = array(
 			'show_summary' => array(
 				'label' => __( 'Show summary', 'fw' ),
 				'desc'  => __( 'Display each project\'s short summary under its title.', 'fw' ),
+				'type'  => 'switch',
+				'value' => 'no',
+			),
+			'show_category' => array(
+				'label' => __( 'Show category', 'fw' ),
+				'desc'  => __( 'Display each project\'s category label above its title.', 'fw' ),
 				'type'  => 'switch',
 				'value' => 'no',
 			),

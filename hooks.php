@@ -15,6 +15,23 @@ function _filter_fw_ext_portfolio_the_content( $the_content ) {
 	 */
 	$portfolio = fw()->extensions->get( 'portfolio' );
 
+	// Only wrap the queried project inside the main loop — the filter stays
+	// attached for the whole request, so without this guard the gallery /
+	// details / related blocks would duplicate into any other the_content
+	// call on the page (widgets, secondary loops, page-builder content).
+	if (
+		! in_the_loop()
+		|| ! is_main_query()
+		|| get_the_ID() !== get_queried_object_id()
+	) {
+		return $the_content;
+	}
+
+	// One application per request: the single project's content is rendered
+	// once; detach so repeated main-loop renders (rare, but possible) don't
+	// double-inject.
+	remove_filter( 'the_content', '_filter_fw_ext_portfolio_the_content' );
+
 	return fw_render_view( $portfolio->locate_view_path( 'content' ), array( 'the_content' => $the_content ) );
 }
 

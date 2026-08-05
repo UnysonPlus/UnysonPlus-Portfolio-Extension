@@ -4,7 +4,8 @@
  *   1. the project gallery (responsive grid → accessible lightbox),
  *   2. the project content,
  *   3. the Project Details list (client, date, services, …),
- *   4. a row of related projects.
+ *   4. previous / next project navigation,
+ *   5. a row of related projects.
  *
  * Each block is gated by the extension settings (Single Project tab). The
  * gallery markup comes from fw_ext_portfolio_render_gallery() so it stays
@@ -40,6 +41,16 @@ if ( $portfolio && $portfolio->gallery_enabled() && $portfolio->feature_enabled(
 /* 2. Content -------------------------------------------------------------- */
 echo $the_content;
 
+/* 2b. Results / metrics band (renders only when metrics are filled in) ----- */
+if ( function_exists( 'fw_ext_portfolio_render_results' ) ) {
+	echo fw_ext_portfolio_render_results( $post_id );
+}
+
+/* 2c. Client testimonial (renders only when a quote is set) ---------------- */
+if ( function_exists( 'fw_ext_portfolio_render_testimonial' ) ) {
+	echo fw_ext_portfolio_render_testimonial( $post_id );
+}
+
 /* 3. Project details ------------------------------------------------------ */
 if (
 	$portfolio
@@ -50,7 +61,18 @@ if (
 	echo fw_ext_portfolio_render_project_meta( $post_id );
 }
 
-/* 4. Related projects ----------------------------------------------------- */
+/* 4. Previous / next project ---------------------------------------------- */
+if (
+	$portfolio
+	&& $portfolio->feature_enabled( 'enable_prevnext', true )
+	&& function_exists( 'fw_ext_portfolio_render_prevnext' )
+) {
+	echo fw_ext_portfolio_render_prevnext( $post_id, array(
+		'same_category' => $portfolio->feature_enabled( 'prevnext_same_category', false ),
+	) );
+}
+
+/* 5. Related projects ----------------------------------------------------- */
 if (
 	$portfolio
 	&& $portfolio->feature_enabled( 'enable_related', true )

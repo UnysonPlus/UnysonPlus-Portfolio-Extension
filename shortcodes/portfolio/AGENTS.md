@@ -24,20 +24,36 @@ only exists when the portfolio extension is active. Leaf shortcode (folder name
 | Att | Type | Default | Description |
 |-----|------|---------|-------------|
 | `categories` | `multi-select` (population `taxonomy`) | — | Restrict to these category term IDs; empty = all |
-| `count` | `short-text` | `-1` | Max projects (-1 = all) |
+| `count` | `short-text` | `-1` | Max projects (-1 = all; = page size when `pagination` is `loadmore`, falling back to 12 if -1) |
 | `featured_only` | `switch` | `no` | Only projects flagged Featured (`_fw_portfolio_featured` meta) |
 | `orderby` | `select` | `date` | date / menu_order / title / rand |
 | `order` | `select` | `DESC` | DESC / ASC |
+| `pagination` | `select` | `none` | none / loadmore (AJAX "Load more" button) |
+| `link_to` | `select` | `project` | project / lightbox (cover image in the shared lightbox, gallery mode) / none |
 
 ### Tab: Layout
 
 | Att | Type | Default | Description |
 |-----|------|---------|-------------|
+| `layout` | `select` | `grid` | grid / masonry (CSS columns, natural heights) / list (full-width rows) |
 | `columns` | `select` 1–6 | `3` | Desktop columns |
+| `ratio` | `select` | `4-3` | 1-1 / 4-3 / 3-2 / 16-9 / 3-4 / auto (original). Masonry forces auto |
+| `hover` | `select` | `zoom` | zoom / overlay (caption slides over image) / grayscale / none |
 | `gap` | `short-text` | `24` | Grid gap (px) |
 | `image_size` | `select` | `large` | Card thumbnail size |
 | `show_filters` | `switch` | `yes` | Show category filter buttons |
 | `show_summary` | `switch` | `no` | Show each project's summary under the title |
+| `show_category` | `switch` | `no` | Show each project's category label above the title |
+
+### AJAX contract (since 1.0.21)
+
+Filters + load-more are **server re-queries** via `wp_ajax(_nopriv)_fw_portfolio_load`
+(nonce `fw-portfolio-load`; args re-validated by `fw_ext_portfolio_sanitize_grid_args()`).
+The wrapper carries `data-pf-query` (exported query JSON), `data-pf-page`/`data-pf-max`;
+`portfolio-grid.js` (localized as `fwPortfolioGrid`) replaces/appends cards and deep-links
+the active filter as `#pf=<term-slug>`. Grids exclude projects flagged
+"Hide from archives" (`_fw_portfolio_hidden`) and prefer the per-project card thumbnail
+(`project_card_image`) over the cover image.
 
 Plus shared `sc_*` Styling / Animations / Advanced tabs (added only when the
 shortcodes helpers exist).

@@ -28,3 +28,10 @@ wp_enqueue_script(
 	$version,
 	true
 );
+
+wp_localize_script( 'fw-ext-portfolio-lightbox', 'fwPortfolioLightboxL10n', array(
+	'gallery'  => __( 'Image gallery', 'fw' ),
+	'close'    => __( 'Close', 'fw' ),
+	'previous' => __( 'Previous image', 'fw' ),
+	'next'     => __( 'Next image', 'fw' ),
+) );

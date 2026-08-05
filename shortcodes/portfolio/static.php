@@ -27,3 +27,10 @@ wp_enqueue_script(
 	$version,
 	true
 );
+
+wp_localize_script( 'fw-ext-portfolio-grid', 'fwPortfolioGrid', array(
+	'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+	'nonce'   => wp_create_nonce( 'fw-portfolio-load' ),
+	'loading' => __( 'Loading…', 'fw' ),
+	'shown'   => __( '%d projects shown', 'fw' ),
+) );

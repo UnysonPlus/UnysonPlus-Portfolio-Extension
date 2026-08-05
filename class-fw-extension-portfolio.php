@@ -31,6 +31,14 @@ class FW_Extension_Portfolio extends FW_Extension {
 		// would fire too early (before save_post).
 		add_action( 'save_post', array( $this, '_action_sync_featured_meta' ), 99, 2 );
 
+		// AJAX filter / load-more for the [portfolio] grid element. The handler
+		// only runs at request time, so no settings are read during boot.
+		add_action( 'wp_ajax_fw_portfolio_load', array( $this, '_action_ajax_load_grid' ) );
+		add_action( 'wp_ajax_nopriv_fw_portfolio_load', array( $this, '_action_ajax_load_grid' ) );
+
+		// CreativeWork structured data on single projects.
+		add_action( 'wp_head', array( $this, '_action_single_project_jsonld' ) );
+
 		if ( is_admin() ) {
 			$this->save_permalink_structure();
 			$this->add_admin_actions();
@@ -54,7 +62,17 @@ class FW_Extension_Portfolio extends FW_Extension {
 		// during _init()/extension boot — only from `init` or later hooks.
 		$value = fw_get_db_ext_settings_option( $this->get_name(), $key, $default );
 
-		return ( null === $value ) ? $default : $value;
+		$value = ( null === $value ) ? $default : $value;
+
+		/**
+		 * Display-setting bridge: lets the active theme override any setting
+		 * (the parent theme's Theme Settings → Portfolio tab hooks this; an
+		 * "Inherit" choice there leaves $value untouched). Keys not present in
+		 * settings-options.php also flow through here, so purely theme-driven
+		 * display knobs (card hover style, aspect ratio, …) can be read with
+		 * get_setting( 'key', <code default> ) without an extension-side field.
+		 */
+		return apply_filters( 'fw:ext:portfolio:setting', $value, $key, $default );
 	}
 
 	/**
@@ -115,6 +133,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 	private function add_admin_actions() {
 		add_action( 'admin_init', array( $this, '_action_add_permalink_in_settings' ) );
 		add_action( 'admin_menu', array( $this, '_action_admin_rename_projects' ) );
+		add_action( 'admin_menu', array( $this, '_action_admin_register_import_page' ) );
 		add_action( 'restrict_manage_posts', array( $this, '_action_admin_add_portfolio_edit_page_filter' ) );
 		// listing screen
 		add_action( 'manage_' . $this->post_type . '_posts_custom_column',
@@ -277,7 +296,8 @@ class FW_Extension_Portfolio extends FW_Extension {
 				'title', /* Text input field to create a post title. */
 				'editor',
 				'thumbnail', /* Displays a box for featured image. */
-				'revisions'
+				'revisions',
+				'page-attributes' /* Order field — powers the "Custom order" (menu_order) sorting. */
 			)
 		);
 
@@ -465,10 +485,60 @@ class FW_Extension_Portfolio extends FW_Extension {
 									'type'  => 'text',
 									'value' => '',
 								),
+								'project_role'     => array(
+									'label' => __( 'Your role', 'fw' ),
+									'desc'  => __( 'e.g. "Lead Designer", "Full-stack Developer".', 'fw' ),
+									'type'  => 'text',
+									'value' => '',
+								),
+								'project_tools'    => array(
+									'label' => __( 'Tools / Tech stack', 'fw' ),
+									'desc'  => __( 'Comma-separated, e.g. "Figma, WordPress, Three.js".', 'fw' ),
+									'type'  => 'text',
+									'value' => '',
+								),
+								'project_industry' => array(
+									'label' => __( 'Industry', 'fw' ),
+									'type'  => 'text',
+									'value' => '',
+								),
+								'project_repo_url' => array(
+									'label' => __( 'Repository URL', 'fw' ),
+									'desc'  => __( 'e.g. a GitHub link, for development projects.', 'fw' ),
+									'type'  => 'text',
+									'value' => '',
+								),
 								'project_summary'  => array(
 									'label' => __( 'Short summary', 'fw' ),
 									'desc'  => __( 'A one or two line description used in listings and the details panel.', 'fw' ),
 									'type'  => 'textarea',
+									'value' => '',
+								),
+								'project_results'  => array(
+									'label'         => __( 'Results / metrics', 'fw' ),
+									'desc'          => __( 'Key outcomes shown as a metrics band, e.g. value "+38%" with label "Conversion rate".', 'fw' ),
+									'type'          => 'addable-box',
+									'value'         => array(),
+									'template'      => '{{- value }} — {{- label }}',
+									'box-options'   => array(
+										'value' => array( 'label' => __( 'Value', 'fw' ), 'type' => 'text', 'value' => '' ),
+										'label' => array( 'label' => __( 'Label', 'fw' ), 'type' => 'text', 'value' => '' ),
+									),
+								),
+								'project_testimonial_quote'   => array(
+									'label' => __( 'Testimonial quote', 'fw' ),
+									'desc'  => __( 'A short client quote about this project. Leave empty to hide the testimonial block.', 'fw' ),
+									'type'  => 'textarea',
+									'value' => '',
+								),
+								'project_testimonial_author'  => array(
+									'label' => __( 'Testimonial author', 'fw' ),
+									'type'  => 'text',
+									'value' => '',
+								),
+								'project_testimonial_company' => array(
+									'label' => __( 'Testimonial company / role', 'fw' ),
+									'type'  => 'text',
 									'value' => '',
 								),
 							),
@@ -498,6 +568,28 @@ class FW_Extension_Portfolio extends FW_Extension {
 				)
 			);
 		}
+
+		$options[] = array(
+			'project-card' => array(
+				'context' => 'side',
+				'title'   => __( 'Card & Visibility', 'fw' ),
+				'type'    => 'box',
+				'options' => array(
+					'project_card_image' => array(
+						'label' => __( 'Card thumbnail', 'fw' ),
+						'desc'  => __( 'Optional image used on grid/archive cards instead of the Cover Image — the crop that works in a grid is rarely the hero crop.', 'fw' ),
+						'type'  => 'upload',
+						'images_only' => true,
+					),
+					'project_hidden' => array(
+						'label' => __( 'Hide from archives', 'fw' ),
+						'desc'  => __( 'Exclude this project from the archive and portfolio grids. It stays reachable at its own URL.', 'fw' ),
+						'type'  => 'switch',
+						'value' => false,
+					),
+				),
+			),
+		);
 
 		return $options;
 	}
@@ -532,23 +624,261 @@ class FW_Extension_Portfolio extends FW_Extension {
 		$orderby = (string) $this->get_setting( 'orderby', 'date' );
 		$order   = (string) $this->get_setting( 'order', 'DESC' );
 
+		// Projects flagged "Hide from archives" are excluded everywhere.
+		$hidden_clause = array( 'key' => '_fw_portfolio_hidden', 'compare' => 'NOT EXISTS' );
+
 		if ( $this->feature_enabled( 'featured_first', true ) && $orderby !== 'rand' ) {
 			// Float featured projects first, then apply the chosen order. The
 			// mirrored '_fw_portfolio_featured' meta only exists on featured
 			// projects, so EXISTS/NOT-EXISTS lets every project sort cleanly.
+			// (WP flattens named clauses recursively, so orderby can reference
+			// fw_featured inside the nested OR group.)
 			$query->set( 'meta_query', array(
-				'relation'      => 'OR',
-				'fw_featured'   => array( 'key' => '_fw_portfolio_featured', 'compare' => 'EXISTS' ),
-				'fw_unfeatured' => array( 'key' => '_fw_portfolio_featured', 'compare' => 'NOT EXISTS' ),
+				'relation'  => 'AND',
+				'fw_hidden' => $hidden_clause,
+				array(
+					'relation'      => 'OR',
+					'fw_featured'   => array( 'key' => '_fw_portfolio_featured', 'compare' => 'EXISTS' ),
+					'fw_unfeatured' => array( 'key' => '_fw_portfolio_featured', 'compare' => 'NOT EXISTS' ),
+				),
 			) );
 			$query->set( 'orderby', array(
 				'fw_featured' => 'DESC',
 				$orderby      => $order,
 			) );
 		} else {
+			$query->set( 'meta_query', array( $hidden_clause ) );
 			$query->set( 'orderby', $orderby );
 			$query->set( 'order', $order );
 		}
+	}
+
+	/**
+	 * AJAX: filter / load-more for the [portfolio] grid element. Receives the
+	 * grid's exported query JSON (re-sanitized through the same whitelist used
+	 * at render time), an optional category filter and a page number; responds
+	 * with the rendered cards + pagination state.
+	 *
+	 * @internal
+	 */
+	public function _action_ajax_load_grid() {
+		check_ajax_referer( 'fw-portfolio-load', 'nonce' );
+
+		$query = json_decode( wp_unslash( isset( $_POST['query'] ) ? $_POST['query'] : '' ), true );
+		if ( ! is_array( $query ) ) {
+			wp_send_json_error( array( 'message' => 'bad query' ), 400 );
+		}
+
+		$args   = fw_ext_portfolio_sanitize_grid_args( $query );
+		$page   = max( 1, (int) ( isset( $_POST['page'] ) ? $_POST['page'] : 1 ) );
+		$filter = (int) ( isset( $_POST['filter'] ) ? $_POST['filter'] : 0 );
+
+		if ( 'loadmore' === $args['pagination'] && $args['count'] < 1 ) {
+			$args['count'] = 12; // mirror render-time page-size fallback
+		}
+
+		if ( $filter > 0 ) {
+			// A filter narrows the grid to one term — but never outside the
+			// element's own category restriction.
+			if ( empty( $args['categories'] ) || in_array( $filter, $args['categories'], true ) ) {
+				$args['categories'] = array( $filter );
+			}
+		}
+
+		$result = fw_ext_portfolio_query_projects( $args, $page );
+
+		wp_send_json_success( array(
+			'html' => fw_ext_portfolio_render_cards( $result['posts'], $args ),
+			'page' => $page,
+			'max'  => (int) $result['max'],
+		) );
+	}
+
+	/**
+	 * CreativeWork JSON-LD for single projects, built from the Project Details
+	 * meta. Emitted on wp_head; skipped when another plugin already prints a
+	 * CreativeWork for the page is not detectable, so themes can disable via
+	 * the fw_ext_portfolio_jsonld filter (return empty array).
+	 *
+	 * @internal
+	 */
+	public function _action_single_project_jsonld() {
+		if ( ! is_singular( $this->post_type ) ) {
+			return;
+		}
+
+		$pid  = (int) get_queried_object_id();
+		$meta = function_exists( 'fw_ext_portfolio_get_project_meta' )
+			? fw_ext_portfolio_get_project_meta( $pid )
+			: array();
+
+		$data = array(
+			'@context' => 'https://schema.org',
+			'@type'    => 'CreativeWork',
+			'name'     => get_the_title( $pid ),
+			'url'      => get_permalink( $pid ),
+		);
+
+		$summary = ! empty( $meta['summary'] ) ? $meta['summary'] : get_the_excerpt( $pid );
+		if ( $summary ) {
+			$data['description'] = wp_strip_all_tags( $summary );
+		}
+
+		if ( has_post_thumbnail( $pid ) ) {
+			$image = wp_get_attachment_image_url( get_post_thumbnail_id( $pid ), 'full' );
+			if ( $image ) {
+				$data['image'] = $image;
+			}
+		}
+
+		if ( ! empty( $meta['date'] ) ) {
+			$ts = strtotime( $meta['date'] );
+			if ( $ts ) {
+				$data['dateCreated'] = gmdate( 'Y-m-d', $ts );
+			}
+		}
+
+		$keywords = array();
+		$terms    = get_the_terms( $pid, $this->taxonomy_name );
+		if ( is_array( $terms ) ) {
+			$keywords = wp_list_pluck( $terms, 'name' );
+		}
+		if ( ! empty( $meta['services'] ) ) {
+			$keywords = array_merge( $keywords, array_filter( array_map( 'trim', explode( ',', $meta['services'] ) ) ) );
+		}
+		if ( ! empty( $keywords ) ) {
+			$data['keywords'] = implode( ', ', array_unique( $keywords ) );
+		}
+
+		$data['creator'] = array(
+			'@type' => 'Organization',
+			'name'  => get_bloginfo( 'name' ),
+		);
+
+		$data = apply_filters( 'fw_ext_portfolio_jsonld', $data, $pid );
+		if ( empty( $data ) ) {
+			return;
+		}
+
+		echo '<script type="application/ld+json">'
+			. wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+			. '</script>' . "\n";
+	}
+
+	/**
+	 * Register the Jetpack Portfolio import tool under the Portfolio menu.
+	 *
+	 * @internal
+	 */
+	public function _action_admin_register_import_page() {
+		add_submenu_page(
+			'edit.php?post_type=' . $this->post_type,
+			__( 'Import Jetpack Portfolio', 'fw' ),
+			__( 'Import', 'fw' ),
+			'manage_options',
+			'fw-portfolio-import',
+			array( $this, '_render_import_page' )
+		);
+	}
+
+	/**
+	 * The Jetpack Portfolio import tool. Converts `jetpack-portfolio` posts to
+	 * this extension's post type and maps their taxonomies:
+	 * jetpack-portfolio-type → portfolio category (found-or-created by name),
+	 * jetpack-portfolio-tag → portfolio tag (only when tags are enabled).
+	 * Bespoke management UI — exempt from the metabox-holder settings layout.
+	 *
+	 * @internal
+	 */
+	public function _render_import_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$jetpack_posts = get_posts( array(
+			'post_type'      => 'jetpack-portfolio',
+			'post_status'    => 'any',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		) );
+
+		$converted = null;
+
+		if (
+			! empty( $_POST['fw_portfolio_import'] )
+			&& check_admin_referer( 'fw-portfolio-import' )
+			&& ! empty( $jetpack_posts )
+		) {
+			$converted = 0;
+
+			foreach ( $jetpack_posts as $pid ) {
+				// Map taxonomy terms BEFORE the type switch (the old terms stay
+				// attached; we add the new-taxonomy equivalents).
+				$types = get_the_terms( $pid, 'jetpack-portfolio-type' );
+				if ( is_array( $types ) ) {
+					$new_ids = array();
+					foreach ( $types as $type_term ) {
+						$existing = get_term_by( 'name', $type_term->name, $this->taxonomy_name );
+						if ( $existing ) {
+							$new_ids[] = (int) $existing->term_id;
+						} else {
+							$created = wp_insert_term( $type_term->name, $this->taxonomy_name );
+							if ( ! is_wp_error( $created ) ) {
+								$new_ids[] = (int) $created['term_id'];
+							}
+						}
+					}
+					if ( $new_ids ) {
+						wp_set_object_terms( $pid, $new_ids, $this->taxonomy_name );
+					}
+				}
+
+				if ( $this->tags_enabled() ) {
+					$tags = get_the_terms( $pid, 'jetpack-portfolio-tag' );
+					if ( is_array( $tags ) ) {
+						wp_set_object_terms( $pid, wp_list_pluck( $tags, 'name' ), $this->taxonomy_tag_name );
+					}
+				}
+
+				set_post_type( $pid, $this->post_type );
+				$converted ++;
+			}
+
+			// Fresh permalinks for the converted posts.
+			flush_rewrite_rules();
+
+			$jetpack_posts = array();
+		}
+
+		echo '<div class="wrap"><h1>' . esc_html__( 'Import Jetpack Portfolio', 'fw' ) . '</h1>';
+
+		if ( null !== $converted ) {
+			echo '<div class="notice notice-success"><p>'
+				. esc_html( sprintf( _n( '%d project imported.', '%d projects imported.', $converted, 'fw' ), $converted ) )
+				. '</p></div>';
+		}
+
+		if ( empty( $jetpack_posts ) ) {
+			echo '<p>' . esc_html__( 'No Jetpack Portfolio (jetpack-portfolio) items found — nothing to import.', 'fw' ) . '</p>';
+		} else {
+			echo '<p>' . esc_html( sprintf(
+				_n(
+					'Found %d Jetpack Portfolio item. Importing converts it to a UnysonPlus Project and maps its Project Types to portfolio categories.',
+					'Found %d Jetpack Portfolio items. Importing converts them to UnysonPlus Projects and maps their Project Types to portfolio categories.',
+					count( $jetpack_posts ),
+					'fw'
+				),
+				count( $jetpack_posts )
+			) ) . '</p>';
+
+			echo '<form method="post">';
+			wp_nonce_field( 'fw-portfolio-import' );
+			echo '<p><button type="submit" name="fw_portfolio_import" value="1" class="button button-primary">'
+				. esc_html__( 'Import now', 'fw' ) . '</button></p>';
+			echo '</form>';
+		}
+
+		echo '</div>';
 	}
 
 	/**
@@ -575,6 +905,17 @@ class FW_Extension_Portfolio extends FW_Extension {
 			update_post_meta( $post_id, '_fw_portfolio_featured', 1 );
 		} else {
 			delete_post_meta( $post_id, '_fw_portfolio_featured' );
+		}
+
+		// Same mirror for the "Hide from archives" flag — archive queries and
+		// grid queries exclude on this meta key (NOT EXISTS keeps unhidden
+		// projects cheap to match).
+		$hidden = fw_get_db_post_option( $post_id, 'project_hidden', false );
+
+		if ( $hidden ) {
+			update_post_meta( $post_id, '_fw_portfolio_hidden', 1 );
+		} else {
+			delete_post_meta( $post_id, '_fw_portfolio_hidden' );
 		}
 	}
 
@@ -624,7 +965,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 						         true ) .
 					         '</a>';
 				} else {
-					$value = '<img src="' . $this->get_declared_URI( '/static/images/no-image.png' ) . '"/>';
+					$value = '<img src="' . esc_url( $this->get_declared_URI( '/static/images/no-image.png' ) ) . '" alt="" />';
 				}
 				echo $value;
 				break;
@@ -654,11 +995,22 @@ class FW_Extension_Portfolio extends FW_Extension {
 		$user              = wp_get_current_user();
 		$hidden_meta_boxes = get_user_meta( $user->ID, 'metaboxhidden_nav-menus' );
 
-		if ( $key = array_search( 'add-' . $this->taxonomy_name, $hidden_meta_boxes[0] ) ) {
-			unset( $hidden_meta_boxes[0][ $key ] );
+		// The meta may be missing entirely (fresh user) — nothing to unhide then.
+		if ( empty( $hidden_meta_boxes ) || ! is_array( $hidden_meta_boxes[0] ) ) {
+			update_user_option( $user->ID, 'fw-metaboxhidden_nav-menus', 'updated', true );
+
+			return;
 		}
 
-		update_user_option( $user->ID, 'metaboxhidden_nav-menus', $hidden_meta_boxes[0], true );
+		$hidden = $hidden_meta_boxes[0];
+
+		// Strict !== false: index 0 is a valid position (the old falsy check
+		// could never unhide the first hidden box).
+		if ( false !== ( $key = array_search( 'add-' . $this->taxonomy_name, $hidden, true ) ) ) {
+			unset( $hidden[ $key ] );
+		}
+
+		update_user_option( $user->ID, 'metaboxhidden_nav-menus', $hidden, true );
 		update_user_option( $user->ID, 'fw-metaboxhidden_nav-menus', 'updated', true );
 	}
 
@@ -678,7 +1030,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 			return;
 		}
 
-		$terms = get_terms( $this->taxonomy_name );
+		$terms = get_terms( array( 'taxonomy' => $this->taxonomy_name ) );
 
 		if ( empty( $terms ) || is_wp_error( $terms ) ) {
 			echo '<select name="' . $this->get_name() . '-filter-by-portfolio-category"><option value="0">' . __( 'View all categories',
@@ -692,7 +1044,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 
 		$dropdown_options = array(
 			'selected'        => $id,
-			'name'            => $this->get_name() . '-filter-by-portfolio-category">',
+			'name'            => $this->get_name() . '-filter-by-portfolio-category',
 			'taxonomy'        => $this->taxonomy_name,
 			'show_option_all' => __( 'View all categories', 'fw' ),
 			'hide_empty'      => true,
@@ -806,10 +1158,6 @@ class FW_Extension_Portfolio extends FW_Extension {
 
 	public function get_taxonomy_tag_name() {
 		return $this->taxonomy_tag_name;
-	}
-
-	public function get_image_sizes() {
-		return $this->get_config( 'image_sizes' );
 	}
 
 	public function get_post_type_name() {

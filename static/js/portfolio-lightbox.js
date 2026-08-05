@@ -22,7 +22,14 @@
 	var lastFocused = null;
 	var preloads = {};
 
-	var SVG_NS = 'http://www.w3.org/2000/svg';
+	// Localized UI strings (wp_localize_script) with English fallbacks.
+	var l10n = window.fwPortfolioLightboxL10n || {};
+	var STR = {
+		gallery:  l10n.gallery  || 'Image gallery',
+		close:    l10n.close    || 'Close',
+		previous: l10n.previous || 'Previous image',
+		next:     l10n.next     || 'Next image'
+	};
 
 	function svg( paths ) {
 		var s = '<svg viewBox="0 0 24 24" aria-hidden="true">' + paths + '</svg>';
@@ -36,24 +43,26 @@
 		overlay.className = 'fw-pg-lb';
 		overlay.setAttribute( 'role', 'dialog' );
 		overlay.setAttribute( 'aria-modal', 'true' );
-		overlay.setAttribute( 'aria-label', 'Image gallery' );
+		overlay.setAttribute( 'aria-label', STR.gallery );
 		overlay.setAttribute( 'aria-hidden', 'true' );
 
+		// aria-live on the caption/counter bar announces image changes to
+		// screen readers as the user navigates the gallery.
 		overlay.innerHTML =
-			'<button type="button" class="fw-pg-lb__btn fw-pg-lb__close" aria-label="Close">' +
+			'<button type="button" class="fw-pg-lb__btn fw-pg-lb__close" aria-label="' + STR.close + '">' +
 				svg( '<path d="M6 6l12 12M18 6L6 18"/>' ) +
 			'</button>' +
-			'<button type="button" class="fw-pg-lb__btn fw-pg-lb__prev" aria-label="Previous image">' +
+			'<button type="button" class="fw-pg-lb__btn fw-pg-lb__prev" aria-label="' + STR.previous + '">' +
 				svg( '<path d="M15 5l-7 7 7 7"/>' ) +
 			'</button>' +
-			'<button type="button" class="fw-pg-lb__btn fw-pg-lb__next" aria-label="Next image">' +
+			'<button type="button" class="fw-pg-lb__btn fw-pg-lb__next" aria-label="' + STR.next + '">' +
 				svg( '<path d="M9 5l7 7-7 7"/>' ) +
 			'</button>' +
 			'<div class="fw-pg-lb__stage">' +
 				'<div class="fw-pg-lb__spinner" aria-hidden="true"></div>' +
 				'<img class="fw-pg-lb__img" alt="" />' +
 			'</div>' +
-			'<div class="fw-pg-lb__bar">' +
+			'<div class="fw-pg-lb__bar" aria-live="polite">' +
 				'<span class="fw-pg-lb__caption"></span>' +
 				'<span class="fw-pg-lb__count"></span>' +
 			'</div>';

@@ -8,6 +8,21 @@ if ( ! is_admin() ) {
 	 */
 	$portfolio = fw()->extensions->get( 'portfolio' );
 
+	$is_portfolio_archive = is_post_type_archive( $portfolio->get_post_type_name() )
+		|| is_tax( $portfolio->get_taxonomy_name() )
+		|| ( $portfolio->tags_enabled() && is_tax( $portfolio->get_taxonomy_tag_name() ) );
+
+	// Cards / grid / filter-bar / prev-next styling — needed on the archive
+	// views as well as the single view (details list, related row).
+	if ( is_singular( $portfolio->get_post_type_name() ) || $is_portfolio_archive ) {
+		wp_enqueue_style(
+			'fw-ext-portfolio-components',
+			fw_min_uri( $portfolio->get_declared_URI( '/static/css/portfolio-components.css' ) ),
+			array(),
+			$portfolio->manifest->get_version()
+		);
+	}
+
 	if ( is_singular( $portfolio->get_post_type_name() ) ) {
 		$version = $portfolio->manifest->get_version();
 
@@ -27,12 +42,11 @@ if ( ! is_admin() ) {
 			true
 		);
 
-		// Project-detail list + related-project cards styling.
-		wp_enqueue_style(
-			'fw-ext-portfolio-components',
-			fw_min_uri( $portfolio->get_declared_URI( '/static/css/portfolio-components.css' ) ),
-			array(),
-			$version
-		);
+		wp_localize_script( 'fw-ext-portfolio-lightbox', 'fwPortfolioLightboxL10n', array(
+			'gallery'  => __( 'Image gallery', 'fw' ),
+			'close'    => __( 'Close', 'fw' ),
+			'previous' => __( 'Previous image', 'fw' ),
+			'next'     => __( 'Next image', 'fw' ),
+		) );
 	}
 }

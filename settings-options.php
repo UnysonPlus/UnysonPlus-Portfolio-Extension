@@ -61,6 +61,12 @@ $options = [
 						'type'  => 'switch',
 						'value' => true,
 					],
+					'archive_filter_bar' => [
+						'label' => __( 'Category filter bar', 'fw' ),
+						'desc'  => __( 'Show category filter links above the archive grid. Each filter is a real category URL, so it works with pagination and is crawlable.', 'fw' ),
+						'type'  => 'switch',
+						'value' => true,
+					],
 				],
 			],
 		],
@@ -121,6 +127,18 @@ $options = [
 						'desc'  => __( 'Render the Project Details list (client, date, …) on the single-project view.', 'fw' ),
 						'type'  => 'switch',
 						'value' => true,
+					],
+					'enable_prevnext'    => [
+						'label' => __( 'Previous / next navigation', 'fw' ),
+						'desc'  => __( 'Show previous/next project links (with thumbnails) beneath the single-project content.', 'fw' ),
+						'type'  => 'switch',
+						'value' => true,
+					],
+					'prevnext_same_category' => [
+						'label' => __( 'Navigate within the same category', 'fw' ),
+						'desc'  => __( 'Constrain previous/next to projects sharing a portfolio category.', 'fw' ),
+						'type'  => 'switch',
+						'value' => false,
 					],
 					'enable_related'     => [
 						'label' => __( 'Related projects', 'fw' ),
