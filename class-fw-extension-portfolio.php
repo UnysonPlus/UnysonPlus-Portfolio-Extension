@@ -664,6 +664,11 @@ class FW_Extension_Portfolio extends FW_Extension {
 	public function _action_ajax_load_grid() {
 		check_ajax_referer( 'fw-portfolio-load', 'nonce' );
 
+		// Browsing action: each call runs a WP_Query. Generous enough that a
+		// visitor clicking through a grid never notices, tight enough that a
+		// scripted loop stops being free.
+		fw_rate_limit_ajax( 'portfolio_load', 60, 60 );
+
 		$query = json_decode( wp_unslash( isset( $_POST['query'] ) ? $_POST['query'] : '' ), true );
 		if ( ! is_array( $query ) ) {
 			wp_send_json_error( array( 'message' => 'bad query' ), 400 );
