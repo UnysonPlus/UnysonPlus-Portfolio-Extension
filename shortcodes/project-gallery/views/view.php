@@ -37,6 +37,11 @@ $empty_text = trim( (string) $pg( 'no_results_text', '' ) );
 
 // Nothing to show and no empty message → render nothing at all.
 if ( $gallery === '' && $empty_text === '' ) {
+	// …except in an editor, where silence reads as a broken block. A visitor still
+	// gets nothing, and an author who set `no_results_text` still gets theirs.
+	if ( fw_is_editor_context() && function_exists( 'sc_editor_notice' ) ) {
+		echo sc_editor_notice( __( 'No gallery images on this project — add them to the project, or choose a different one.', 'fw' ) );
+	}
 	return;
 }
 

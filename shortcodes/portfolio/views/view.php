@@ -66,6 +66,10 @@ if ( function_exists( 'fw_ext_portfolio_render_grid' ) ) {
 }
 
 if ( $grid === '' ) {
+	// Editor-only note; a visitor still gets nothing.
+	if ( fw_is_editor_context() && function_exists( 'sc_editor_notice' ) ) {
+		echo sc_editor_notice( __( 'No projects match this query yet — add projects, or widen the categories and count.', 'fw' ) );
+	}
 	return;
 }
 

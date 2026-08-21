@@ -18,6 +18,9 @@ $html = ( $pid && function_exists( 'fw_ext_portfolio_render_testimonial' ) )
 	: '';
 
 if ( $html === '' ) {
+	if ( fw_is_editor_context() && function_exists( 'sc_editor_notice' ) ) {
+		echo sc_editor_notice( __( 'No testimonial on this project — add one to the project, or choose a different one.', 'fw' ) );
+	}
 	return;
 }
 

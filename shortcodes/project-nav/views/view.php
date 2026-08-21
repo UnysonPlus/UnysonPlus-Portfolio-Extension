@@ -15,6 +15,9 @@ $pf = function ( $key, $default ) use ( $atts ) {
 
 $portfolio = function_exists( 'fw_ext' ) ? fw_ext( 'portfolio' ) : null;
 if ( ! $portfolio || ! is_singular( $portfolio->get_post_type_name() ) ) {
+	if ( fw_is_editor_context() && function_exists( 'sc_editor_notice' ) ) {
+		echo sc_editor_notice( __( 'Project navigation only renders on a single project — place it in a project template.', 'fw' ) );
+	}
 	return;
 }
 

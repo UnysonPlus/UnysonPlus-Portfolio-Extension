@@ -22,6 +22,11 @@ if ( $pid && function_exists( 'fw_ext_portfolio_render_project_meta' ) ) {
 }
 
 if ( $html === '' ) {
+	// The common mistake this names: the element reads the CURRENT project, so in
+	// an ordinary page there is none, and it renders nothing with no other symptom.
+	if ( fw_is_editor_context() && function_exists( 'sc_editor_notice' ) ) {
+		echo sc_editor_notice( __( 'No project details to show — choose a project, or place this in a project template.', 'fw' ) );
+	}
 	return;
 }
 

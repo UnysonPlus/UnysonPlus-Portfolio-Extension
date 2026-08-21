@@ -15,6 +15,10 @@ $pf = function ( $key, $default ) use ( $atts ) {
 
 $portfolio = function_exists( 'fw_ext' ) ? fw_ext( 'portfolio' ) : null;
 if ( ! $portfolio || ! is_singular( $portfolio->get_post_type_name() ) ) {
+	// Relatedness is derived from the CURRENT project, so there has to be one.
+	if ( fw_is_editor_context() && function_exists( 'sc_editor_notice' ) ) {
+		echo sc_editor_notice( __( 'Related projects need a current project — place this in a project template.', 'fw' ) );
+	}
 	return;
 }
 
@@ -27,6 +31,9 @@ $html = function_exists( 'fw_ext_portfolio_render_related' )
 	: '';
 
 if ( $html === '' ) {
+	if ( fw_is_editor_context() && function_exists( 'sc_editor_notice' ) ) {
+		echo sc_editor_notice( __( 'No related projects found — relatedness comes from the current project, so this needs a project template.', 'fw' ) );
+	}
 	return;
 }
 
