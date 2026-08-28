@@ -2,6 +2,7 @@
 	die( 'Forbidden' );
 }
 
+/** Returns the saved project-gallery images for a portfolio post, or an empty array. */
 function fw_ext_portfolio_get_gallery_images( $post_id = 0 ) {
 	if ( ! $post_id ) {
 		// get_the_ID() returns false outside the loop — bail cleanly then.
@@ -522,6 +523,8 @@ function fw_ext_portfolio_grid_attrs( $args = array() ) {
 }
 
 /**
+ * Renders a grid of portfolio projects from the given query and layout arguments.
+ *
  * Render a filterable grid of portfolio projects (category filter buttons +
  * a CSS grid). Filtering is dependency-free (handled by portfolio-grid.js).
  *
@@ -906,6 +909,8 @@ function fw_ext_portfolio_render_prevnext( $post_id = 0, $args = array() ) {
 }
 
 /**
+ * Renders the gallery HTML for a portfolio project, or an empty string when it has no gallery images.
+ *
  * Render a project's image gallery as a responsive grid that opens in the
  * built-in accessible lightbox. Shared by the single-project view
  * (views/content.php) and the [project_gallery] shortcode — the single source

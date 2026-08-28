@@ -65,6 +65,8 @@ class FW_Extension_Portfolio extends FW_Extension {
 		$value = ( null === $value ) ? $default : $value;
 
 		/**
+		 * Filters a portfolio display setting value by key, letting the active theme override extension defaults.
+		 *
 		 * Display-setting bridge: lets the active theme override any setting
 		 * (the parent theme's Theme Settings → Portfolio tab hooks this; an
 		 * "Inherit" choice there leaves $value untouched). Keys not present in
@@ -115,15 +117,18 @@ class FW_Extension_Portfolio extends FW_Extension {
 	 * @return bool
 	 */
 	public function tags_enabled() {
+		/** Filters whether the portfolio Tag taxonomy is registered, defaulting to the settings toggle. */
 		return (bool) apply_filters( 'fw:ext:portfolio:enable-tags', $this->feature_enabled( 'enable_tags', false ) );
 	}
 
 	private function define_slugs() {
+		/** Filters the portfolio post type permalink slug. */
 		$this->slug = apply_filters(
 			'fw_ext_portfolio_post_slug',
 			$this->get_db_data( 'permalinks/post', $this->slug )
 		);
 
+		/** Filters the portfolio category taxonomy permalink slug. */
 		$this->taxonomy_slug = apply_filters(
 			'fw_ext_portfolio_taxonomy_slug',
 			$this->get_db_data( 'permalinks/taxonomy', $this->taxonomy_slug )
@@ -284,12 +289,14 @@ class FW_Extension_Portfolio extends FW_Extension {
 	 */
 	public function _action_register_post_type() {
 
+		/** Filters the singular and plural labels used when registering the portfolio project post type. */
 		$post_names = apply_filters( 'fw_ext_projects_post_type_name',
 			array(
 				'singular' => __( 'Project', 'fw' ),
 				'plural'   => __( 'Projects', 'fw' )
 			) );
 
+		/** Filters the supports array (title, editor, thumbnail, revisions, page-attributes) used when registering the portfolio project post type. */
 		$supports = apply_filters(
 			'fw_ext_projects_feature_supports',
 			array(
@@ -366,6 +373,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 	 */
 	public function _action_register_taxonomy() {
 
+		/** Filters the singular and plural labels for the portfolio category taxonomy. */
 		$category_names = apply_filters( 'fw_ext_portfolio_category_name', array(
 			'singular' => __( 'Category', 'fw' ),
 			'plural'   => __( 'Categories', 'fw' )
@@ -399,6 +407,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 		) );
 
 		if ( $this->tags_enabled() ) {
+			/** Filters the singular and plural labels for the portfolio tag taxonomy. */
 			$tag_names = apply_filters( 'fw_ext_portfolio_tag_name', array(
 				'singular' => __( 'Tag', 'fw' ),
 				'plural'   => __( 'Tags', 'fw' )
@@ -760,6 +769,7 @@ class FW_Extension_Portfolio extends FW_Extension {
 			'name'  => get_bloginfo( 'name' ),
 		);
 
+		/** Filters the portfolio JSON-LD structured data before it is output in the page head. */
 		$data = apply_filters( 'fw_ext_portfolio_jsonld', $data, $pid );
 		if ( empty( $data ) ) {
 			return;

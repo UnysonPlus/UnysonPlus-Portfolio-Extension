@@ -33,8 +33,10 @@ if ( $has_theme_wrapper ) {
 
 /* Archive header (title + description) ------------------------------------ */
 if ( function_exists( 'unysonplus_render_archive_header' ) ) {
+	/** Fires in the portfolio archive before the archive header renders, letting code inject markup above the title. */
 	do_action( 'unysonplus_before_archive_title' );
 	unysonplus_render_archive_header();
+	/** Fires in the portfolio archive after the archive header renders, letting code inject markup below the title. */
 	do_action( 'unysonplus_after_archive_title' );
 } else {
 	echo '<header class="page-header fw-portfolio-archive__header">';
