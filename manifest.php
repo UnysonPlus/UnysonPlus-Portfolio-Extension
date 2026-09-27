@@ -11,7 +11,7 @@ $manifest['description'] = __(
 	'fw' 
 );
 
-$manifest['version']     = '1.0.26';
+$manifest['version']     = '1.0.27';
 $manifest['display']     = true;
 $manifest['standalone']  = true;
 
@@ -33,6 +33,12 @@ $manifest['requires_wp']  = '5.8';
 /**
  * Changelog
  * -----------------------------------------------------------------------------
+ * 1.0.27 - AI Assistant abilities. With the AI Assistant extension active, the AI can
+ *         work with the portfolio: portfolio-list, portfolio-describe and portfolio-save-project
+ *         (title, content, categories / tags, images, gallery and the project details,
+ *         validated against the edit screen's fields) — undoable through undo_change / page revisions.
+ *         See includes/ai-abilities.php.
+ *
  * 1.0.23 - Single-project template parts as drop-in builder elements. Five
  *          new Components-tab elements let a project page be built entirely
  *          in the page builder (Semplice-style freedom) while the default

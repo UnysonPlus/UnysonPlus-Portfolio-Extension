@@ -15,6 +15,9 @@ class FW_Extension_Portfolio extends FW_Extension {
 	 * @internal
 	 */
 	public function _init() {
+		// AI Assistant abilities (only registered while that extension is active).
+		require_once dirname( __FILE__ ) . '/includes/ai-abilities.php';
+
 		$this->define_slugs();
 
 		add_action( 'init', array( $this, '_action_register_post_type' ) );
