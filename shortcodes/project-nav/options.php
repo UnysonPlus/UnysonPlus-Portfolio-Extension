@@ -12,6 +12,8 @@ $options = array(
 				'desc'  => __( 'Constrain previous/next to projects sharing a portfolio category. Renders nothing outside a single-project page.', 'fw' ),
 				'type'  => 'switch',
 				'value' => 'no',
+				'left-choice' => array( 'value' => 'no', 'label' => __( 'No', 'fw' ) ),
+				'right-choice' => array( 'value' => 'yes', 'label' => __( 'Yes', 'fw' ) ),
 			),
 		),
 	),

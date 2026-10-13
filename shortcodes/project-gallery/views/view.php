@@ -27,8 +27,8 @@ if ( $resolved_id && function_exists( 'fw_ext_portfolio_render_gallery' ) ) {
 		'columns_mobile' => (int) $pg( 'columns_mobile', 1 ),
 		'gap'            => (int) $pg( 'gap', 16 ),
 		'ratio'          => $pg( 'ratio', '4-3' ),
-		'lightbox'       => $pg( 'lightbox', 'yes' ) === 'yes',
-		'captions'       => $pg( 'captions', 'no' ) === 'yes',
+		'lightbox'       => in_array( $pg( 'lightbox', 'yes' ), array( 'yes', true ), true ), // true = saved before yes/no choices
+		'captions'       => in_array( $pg( 'captions', 'no' ), array( 'yes', true ), true ),
 		'image_size'     => $pg( 'image_size', 'large' ),
 	) );
 }

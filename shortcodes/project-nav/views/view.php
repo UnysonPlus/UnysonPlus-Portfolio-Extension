@@ -23,7 +23,7 @@ if ( ! $portfolio || ! is_singular( $portfolio->get_post_type_name() ) ) {
 
 $html = function_exists( 'fw_ext_portfolio_render_prevnext' )
 	? fw_ext_portfolio_render_prevnext( 0, array(
-		'same_category' => $pf( 'same_category', 'no' ) === 'yes',
+		'same_category' => in_array( $pf( 'same_category', 'no' ), array( 'yes', true ), true ), // true = saved before yes/no choices
 	) )
 	: '';
 

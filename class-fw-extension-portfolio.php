@@ -58,6 +58,22 @@ class FW_Extension_Portfolio extends FW_Extension {
 	 *
 	 * @return mixed
 	 */
+	/**
+	 * Back-compat with Unyson's portfolio API.
+	 *
+	 * Unyson exposed get_image_sizes(); UnysonPlus dropped it, so an Unyson-era
+	 * theme fatals on the portfolio archive with "Call to undefined method
+	 * FW_Extension_Portfolio::get_image_sizes()". Delegates to get_config()
+	 * exactly as Unyson did, so a theme declaring image_sizes in
+	 * framework-customizations/extensions/portfolio/config.php still wins
+	 * through the normal config merge.
+	 *
+	 * @return array
+	 */
+	public function get_image_sizes() {
+		return (array) $this->get_config( 'image_sizes' );
+	}
+
 	public function get_setting( $key, $default = null ) {
 		// Forward the default so an unsaved option short-circuits inside the
 		// options model BEFORE it loads/processes settings-options.php (which
